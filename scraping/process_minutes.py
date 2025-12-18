@@ -168,8 +168,8 @@ def segment_sentences(df):
 
 if __name__ == "__main__":
     # 配置路径
-    INPUT_PATH = r"e:\Textming\Fed_Project\data\fed_minutes.csv"
-    OUTPUT_PATH = r"e:\Textming\Fed_Project\data\fed_minutes_sentences_structured.csv"
+    INPUT_PATH = r"e:\Textming\data\fed_minutes.csv"
+    OUTPUT_PATH = r"e:\Textming\data\fed_minutes_sentences_structured.csv"
     
     df_raw = load_data(INPUT_PATH)
     

@@ -294,7 +294,7 @@ class FedPressConfProcessor:
             return " ".join(valid_segments)
 
 if __name__ == "__main__":
-    DATA_ROOT = r"e:\Textming\Fed_Project\data"
+    DATA_ROOT = r"e:\Textming\data"
     processor = FedPressConfProcessor(DATA_ROOT)
     processor.download_pdfs(start_year=2018, end_year=2024)
     processor.process_pdfs()
