@@ -10,3 +10,7 @@ statsmodels
 matplotlib
 seaborn
 kagglehub
+pandas_datareader
+arch
+jupyter
+notebook
