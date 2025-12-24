@@ -91,7 +91,7 @@ class SpeechScraper:
         # Go up one level to the project root (Fed_Project/)
         project_root = os.path.dirname(script_dir)
         # Define the path to the data folder
-        data_dir = os.path.join(project_root, "data")
+        data_dir = os.path.join(project_root, "data/raw")
         
         # Ensure the data directory exists
         os.makedirs(data_dir, exist_ok=True)

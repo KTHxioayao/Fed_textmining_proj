@@ -10,8 +10,8 @@ import csv
 
 class FedPressConfProcessor:
     def __init__(self, data_folder):
-        self.pdf_folder = os.path.join(data_folder, "press_conf_pdfs")
-        self.output_csv = os.path.join(data_folder, "fed_press_conf_structured.csv")
+        self.pdf_folder = os.path.join(data_folder, "raw", "press_conf_pdfs")
+        self.output_csv = os.path.join(data_folder, "processed", "fed_press_conf_structured.csv")
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
         }

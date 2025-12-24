@@ -20,8 +20,8 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR) # Go up one level to Fed_Project
 
 # CHANGED: Read input from 'data' folder instead of 'scraping' folder
-INPUT_FILE = os.path.join(PROJECT_ROOT, "data", "fed_speeches.csv")
-OUTPUT_FILE = os.path.join(PROJECT_ROOT, "data", "fed_speeches_sentences.csv")
+INPUT_FILE = os.path.join(PROJECT_ROOT, "data", "raw", "fed_speeches.csv")
+OUTPUT_FILE = os.path.join(PROJECT_ROOT, "data", "processed", "fed_speeches_sentences.csv")
 
 def clean_text(text):
     """

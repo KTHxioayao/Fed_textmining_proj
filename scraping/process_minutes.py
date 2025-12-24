@@ -72,7 +72,8 @@ def extract_sections(text):
                 matches.append({
                     "section_name": section_name,
                     "start_index": idx,
-                    "priority": idx # 用位置排序
+                    "header_length": len(keyword), # Record length to skip header
+                    "priority": idx 
                 })
                 # 找到一个关键词后，该章节就定位了，跳过该章节的其他别名
                 break 
@@ -89,6 +90,8 @@ def extract_sections(text):
     for i in range(len(matches)):
         current_match = matches[i]
         start = current_match['start_index']
+        # Skip the header itself
+        content_start = start + current_match['header_length']
         
         # 结束位置是下一个章节的开始，或者是文末
         if i < len(matches) - 1:
@@ -96,8 +99,8 @@ def extract_sections(text):
         else:
             end = len(text)
             
-        # 提取该段文本
-        section_text = text[start:end].strip()
+        # 提取该段文本 (去除标题)
+        section_text = text[content_start:end].strip()
         
         extracted_data.append({
             "section_name": current_match['section_name'],
@@ -168,8 +171,8 @@ def segment_sentences(df):
 
 if __name__ == "__main__":
     # 配置路径
-    INPUT_PATH = r"e:\Textming\data\fed_minutes.csv"
-    OUTPUT_PATH = r"e:\Textming\data\fed_minutes_sentences_structured.csv"
+    INPUT_PATH = r"e:\Textming\data\raw\fed_minutes.csv"
+    OUTPUT_PATH = r"e:\Textming\data\processed\fed_minutes_sentences_structured.csv"
     
     df_raw = load_data(INPUT_PATH)
     
