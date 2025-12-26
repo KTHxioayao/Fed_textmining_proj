@@ -110,7 +110,7 @@ def process_speeches():
             processed_rows.append({
                 'date': final_date,
                 'title': row.get('title', 'Unknown'),
-                'sentence_text': sent,
+                'text': sent,
                 'source_type': 'Speech',
                 'url': url # Keeping URL for reference
             })

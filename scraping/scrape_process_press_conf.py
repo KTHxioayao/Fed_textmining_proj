@@ -7,6 +7,14 @@ from bs4 import BeautifulSoup
 import time
 import random
 import csv
+import nltk
+from nltk.tokenize import sent_tokenize
+
+# Download punkt tokenizer if not already available
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
 
 class FedPressConfProcessor:
     def __init__(self, data_folder):
@@ -220,20 +228,26 @@ class FedPressConfProcessor:
             raw_opening = text[:split_idx]
             raw_qa = text[split_idx:]
             
-            op_text = self._extract_speaker_segments(raw_opening, is_qa=False)
-            if op_text:
-                segments.append({'date': date_str, 'section': 'Opening Statement', 'text': op_text})
+            # Opening statement - returns list of sentences
+            op_sentences = self._extract_speaker_segments(raw_opening, is_qa=False)
+            if isinstance(op_sentences, list):
+                for sent in op_sentences:
+                    segments.append({'date': date_str, 'section': 'Opening Statement', 'text': sent})
+            elif op_sentences:  # String fallback
+                segments.append({'date': date_str, 'section': 'Opening Statement', 'text': op_sentences})
                 
-            qa_texts = self._extract_speaker_segments(raw_qa, is_qa=True)
-            for t in qa_texts:
-                segments.append({'date': date_str, 'section': 'Q&A', 'text': t})
+            # Q&A - returns list of sentences
+            qa_sentences = self._extract_speaker_segments(raw_qa, is_qa=True)
+            for sent in qa_sentences:
+                segments.append({'date': date_str, 'section': 'Q&A', 'text': sent})
         else:
-            full_texts = self._extract_speaker_segments(text, is_qa=False)
-            if isinstance(full_texts, list):
-                for t in full_texts:
-                    segments.append({'date': date_str, 'section': 'Full Text', 'text': t})
-            else:
-                segments.append({'date': date_str, 'section': 'Full Text', 'text': full_texts})
+            # Full text - returns list of sentences
+            full_sentences = self._extract_speaker_segments(text, is_qa=False)
+            if isinstance(full_sentences, list):
+                for sent in full_sentences:
+                    segments.append({'date': date_str, 'section': 'Full Text', 'text': sent})
+            elif full_sentences:  # String fallback
+                segments.append({'date': date_str, 'section': 'Full Text', 'text': full_sentences})
         return segments
 
     def _process_conf_call(self, text, date_str):
@@ -268,6 +282,26 @@ class FedPressConfProcessor:
             if len(text) < 30 and phrase.lower() in text_lower: return True
         return False
 
+    def _split_into_sentences(self, text):
+        """Split text into sentences and filter out noise."""
+        if not text or len(text.strip()) < 10:
+            return []
+        
+        # Use NLTK sentence tokenizer
+        sentences = sent_tokenize(text)
+        
+        # Filter out very short or noise sentences
+        valid_sentences = []
+        for sent in sentences:
+            sent = sent.strip()
+            # Keep sentences that are substantive (at least 20 characters and 3 words)
+            if len(sent) >= 20 and len(sent.split()) >= 3:
+                # Filter out common noise patterns
+                if not self._is_noise_content(sent):
+                    valid_sentences.append(sent)
+        
+        return valid_sentences
+
     def _extract_speaker_segments(self, text, is_qa):
         pattern = re.compile(r'(?:^|\s)([A-Z\s\.\'’-]{3,}|Transcript of the Federal Open Market Committee Conference Call)\s*[\.:]')
         
@@ -275,7 +309,9 @@ class FedPressConfProcessor:
         valid_segments = []
         
         if len(parts) < 2:
-            return [] if is_qa else text
+            if not is_qa and text:
+                return self._split_into_sentences(text)
+            return []
 
         for i in range(1, len(parts), 2):
             speaker = parts[i].strip().upper()
@@ -285,13 +321,11 @@ class FedPressConfProcessor:
                 if "Transcript of" in content[:100]:
                      content = content.split("Transcript of")[0]
                 if self._is_noise_content(content): continue
-                if len(content) > 10: 
-                    valid_segments.append(content)
+                if len(content) > 10:
+                    sentences = self._split_into_sentences(content)
+                    valid_segments.extend(sentences)
         
-        if is_qa:
-            return valid_segments 
-        else:
-            return " ".join(valid_segments)
+        return valid_segments
 
 if __name__ == "__main__":
     DATA_ROOT = r"e:\Textming\data"
