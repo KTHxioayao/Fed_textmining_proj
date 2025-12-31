@@ -33,12 +33,12 @@ The analysis is structured into a sequential pipeline located in the `notebooks/
 | 06 | `7b_Model_Comparison_Visualization.ipynb` | Final comparative visualization of model signals vs. Market Data. |
 
 ## 📂 Repository Structure
+- **`data/`**: Local storage for raw corpora, processed datasets, and intermediate results.
 - **`notebooks/`**: Interactive Jupyter notebooks covering the full analysis pipeline (Data Integration, EDA, Sentiment Analysis, Visualization).
 - **`scraping/`**: Python scripts for data collection, including `fetch_econ_data.py` and scrapers for FOMC documents.
 - **`utils/`**: Shared helper modules (`utilities.py`) for text processing, sentiment scoring, and plotting functions.
 - **`scripts/`**: (Ignored by Git) Directory for runtime artifacts, model caches, and temporary script outputs.
 - **`reports/`**: (Ignored by Git) Generated project reports and the LaTeX source code for the academic paper.
-- **`data/`**: (Ignored by Git) Local storage for raw corpora, processed datasets, and intermediate results.
 
 ## 📖 References
 - **Loughran, T., & McDonald, B. (2011).** When is a Liability not a Liability? Textual Analysis, Dictionaries, and 10-Ks. *The Journal of Finance*.
