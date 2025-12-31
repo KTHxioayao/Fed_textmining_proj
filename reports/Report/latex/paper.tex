@@ -1,0 +1,297 @@
+\documentclass[11pt]{article}
+% Change "review" to "final" to generate the final (sometimes called camera-ready) version.
+% Change to "preprint" to generate a non-anonymous version with page numbers.
+\usepackage[review]{acl}
+\usepackage{tabularx}
+\usepackage{amsmath}
+% Standard package includes
+\usepackage{times}
+\usepackage{latexsym}
+
+% For proper rendering and hyphenation of words containing Latin characters (including in bib files)
+\usepackage[T1]{fontenc}
+% For Vietnamese characters
+% \usepackage[T5]{fontenc}
+% See https://www.latex-project.org/help/documentation/encguide.pdf for other character sets
+
+% This assumes your files are encoded as UTF8
+\usepackage[utf8]{inputenc}
+
+% This is not strictly necessary, and may be commented out,
+% but it will improve the layout of the manuscript,
+% and will typically save some space.
+\usepackage{microtype}
+\usepackage{caption}
+% This is also not strictly necessary, and may be commented out.
+% However, it will improve the aesthetics of text in
+% the typewriter font.
+\usepackage{inconsolata}
+\usepackage{array} % 必须引入 array 包才能使用 m{}
+%Including images in your LaTeX document requires adding
+%additional package(s)
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{subcaption}
+% \usepackage[round]{natbib}
+\setcitestyle{round}
+
+% If the title and author information does not fit in the area allocated, uncomment the following
+%
+%\setlength\titlebox{<dim>}
+%
+% and set <dim> to something 5cm or larger.
+
+\title{Instructions for *ACL Proceedings}
+
+\author{Xiaochen Liu \\
+  Linköping University , Sweden \\
+  SE-581 83 \\
+  Sweden \\
+  \texttt{xiali125@student.liu.se} \\\
+  }
+
+\begin{document}
+\maketitle
+\begin{abstract}
+sssssssssss
+\end{abstract}
+
+\section{Introduction}
+
+\section{Theory}
+
+Unlike standard financial sentiment analysis where positive sentiment typically implies a bullish market (Dovish), within the context of Central Bank communication, we adopt a Reaction-Function based mapping. We map Positive Sentiment (confidence in economic growth/labor market) to a Hawkish Stance (propensity to tighten), and Negative Sentiment (concerns over recession/downside risks) to a Dovish Stance (propensity to ease)."
+
+
+\section{Dataset}
+\subsection{FOMC Data} % done
+The primary dataset used in this study was constructed by scraping official communications from the Federal Reserve Board’s website\footnote{\url{https://www.federalreserve.gov/default.htm}}, covering the period from January 2018 to December 2024. The corpus consists of three categories of documents, each reflecting a distinct aspect of monetary policy communication.
+
+% done
+\textbf{Meeting Minutes    } 
+
+Meeting minutes provide detailed records of Federal Open Market Committee (FOMC) meetings. In 2018, the FOMC held four scheduled meetings, and this number increased to eight meetings per year beginning in 2019. The minutes include staff assessments of current economic and financial conditions as well as participants’ views on policy considerations. As such, they offer a comprehensive account of internal deliberations and are well suited for analyzing consensus and dissent within the Committee.
+
+%done
+\textbf{Press Conference Transcripts    }
+
+This category consists of transcripts from post-meeting press conferences held by the Federal Reserve Chair. Each transcript typically includes a prepared opening statement followed by an unscripted question-and-answer session, which often contains more immediate and candid policy signals. Notably, the frequency of these press conferences increased from a quarterly schedule in 2018 to following every scheduled FOMC meeting starting in January 2019.
+
+
+\textbf{Speeches    } 
+
+Formal addresses delivered by not only the Federal Reserve Chair but also vice chair , governor and other officials at various forums during inter-meeting period. These speeches can focus on specific topics and sometimes represent merely the perspective of the speaker.
+% 确保你的导言区引用了 \usepackage{booktabs}
+
+\begin{table*}[t]
+    \centering
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+        \toprule
+        \textbf{Event} & \textbf{\# Files} & \textbf{\# Sentences} & \textbf{\# Words} & \textbf{Avg. Words in Sentence} \\
+        \midrule
+        Meeting Minutes           & 56    & 1,218   & 28,799   & 23.64 \\
+        Press Conferences         & 54    & 4,318   & 102,833  & 23.81 \\
+        Speeches                  & 60    & 1,934   & 47,348   & 24.48 \\
+        \midrule
+        \textbf{Total}            & \textbf{170} & \textbf{7,470} & \textbf{178,980} & \textbf{23.96} \\
+        \bottomrule
+    \end{tabular*}
+    \captionsetup{justification=raggedright, singlelinecheck=false}
+    \caption{Details on the text data covered from FOMC}
+    \label{tab:corpus_details}
+\end{table*}
+
+
+\textbf{Data \& Title Filtration    }
+
+A custom ETL (Extract, Transform, Load) pipeline was engineered to process these unstructured PDF and HTML files. These pre-processing steps include geometric cropping to remove headers/footers from PDFs, and a rule-based speaker diarization algorithm to concentrate on Powell's remarks from reporter inquiries in press conference transcripts. Another criteria in the filtering is that sentences does not contain any keywords in the keyword list \cite{shah-etal-2023-trillion} will be removed, aiming to keep sentences to be meaningful for monetary policy inference. Details for filtering are reported in Appendix A. The final corpus consists of over 7470 sentence-level segments, structured with metadata for date, section (e.g., "Opening Statement" vs. "Q\&A"), and document type, also as Table~\ref{tab:corpus_details} shows.
+
+
+
+\subsection{Labeled Data}
+The performance evaluation of our sentiment analysis models is finished on stratified evaluation including around 600 sentences and classes are intentionally balanced (approx. 33\% each for three classes :0: Dovish, 1: Hawkish, and 2: Neutral). This manually annotated dataset is from \cite{shah-etal-2023-trillion}, where sentences were sampled before categorization. 
+Dovish, in the context of monetary policy stance, means that the central bank has the tendency to ease to stimulate economic growth. This can typically be done by decreasing interest rate, increasing money supply. In contrast, the opposite of dovish, hawkish implies the tendency of a tighter monetary policy stance typically by increasing interest rate and tighten money supply. While neutral is something in between, indicating the withstanding of current monetary policy or irrelevant statement regarding monetary policy.    
+
+\subsection{Economic Data}
+To validate the economic relevance with the extracted text sentiments, we collected monthly macroeconomic indicators from the Federal Reserve Economic Data (FRED) database \footnote{\url{https://fred.stlouisfed.org}}. We have picked CPI (Consumer Price Index)
+PPI (Producer Price Index) and Federal Fund reta. Both CPI and PPI indicators were transformed into Year-over-Year (YoY) percentage change rates as follow:
+
+\begin{equation}
+\mathrm{YoY}_t = \frac{P_t - P_{t-12}}{P_{t-12}} \times 100
+\end{equation}
+
+to align with standard inflation measurement used in central bank policy system.
+
+% 【已移动】Table 2 之前在这里，现在移到了 Results 章节开始处，以便与图放在一起。
+
+\section{Methods}
+\subsection{Topic modeling }
+As an unsupervised method, we use clustering method to analyze the topic changes during 2018 to 2024. The BertTopic model was applied. 
+
+\subsection{Rule-based model}
+
+Rule-based model works as a baseline in our study. A dictionary containing negative and positive words is created and the times that words appear in those two categorizes are conuted fro each sentence. A sentences is classified by the category that has larger negative or positive words than the other. The construction of the dictionary is shown in Appendix.  
+
+\subsection{Pretrained Language Model (PLM)}
+There are several  Pretrained Language Model (PLM) that are used for evaluation before the application of FOMC document sentiment inference, namely Finber, Finbert-FOMC, RoBERT-Large and Cardiff RoBERTs. They are test and evaluated on the labeled data.   
+
+\textbf{Finbert    }
+
+Finbert  \cite{DBLP:journals/corr/abs-1908-10063} is a pre-trained language model based on BERT but mainly train to tackle tasks in the finance domain.
+
+\textbf{Finbert-FOMC    }
+Finbert-FOMC\cite{10.1145/3604237.3626843} is a fine-tuned version of Finbert, using the data of FOMC minutes 2006 to 2032. 
+
+
+\textbf{RoBERT-Large    }
+RoBERT-Large \cite{DBLP:journals/corr/abs-1907-11692} is a pretrained English model using a large English dataset on a self-supervised basis. 
+
+\textbf{Cardiff RoBERTs    }
+Cardiff RoBERTs\cite{barbieri-etal-2020-tweeteval} is also a RoBERTa-base model trained on ~58M tweets on top of the original RoBERTa-base checkpoint. 
+
+\subsection{Transfer learning}
+The sentiment index is calculated as follow: 
+
+\begin{equation}
+\text{Index} = \frac{\text{Hawkish}_{\text{score}} - \text{Dovish}_{\text{score}}}{\text{Hawkish}_{\text{count}}+\text{Dovish}_{\text{count}}}
+\end{equation}
+
+% 【已移动】Figure 1 & 2 之前在这里，现在移到了 Results 章节开始处。
+
+\section{Results}
+\subsection{Topic modeling}
+The results reveal three distinct phases, as is shown in Figure~\ref{fig:topic_evolution}. Initially, the conversation centered on Monetary Policy. This concentration changed after the COVID-19 cuts, when Inflation Policy began to gain prominence. Once the Fed started hiking rates in 2022, the narrative shifted again to the dominating combination of Inflation \& Policy and Inflation \& Prices. This evolution suggests that public discourse closely tracks economic conditions before major decisions are made, and the sustained focus on inflation aligns well with the Federal Reserve's core responsibilities.
+% ---------------------------------------------------------------------
+
+% Table 2 Code
+
+% Figure 1 & 2 Code (Stacked Subfigures)
+\begin{figure*}
+        \centering
+        \includegraphics[width=\textwidth]{acl_topic_evolution_maximized.png}
+        \captionsetup{justification=raggedright, singlelinecheck=false}
+         \caption{Evolution of 5 dominant topics, 2018-2024}
+
+         \label{fig:topic_evolution}  
+\end{figure*}
+
+ \begin{figure*}[!t]
+     % 第一张子图 (CPI)
+         \centering
+         \includegraphics[width=\textwidth]{model_comparison_finbert_fomc.png}
+         \caption{Performance Comparison of Sentiment Analysis Models on FOMC Dataset. Positive: Hawkish, negative: Dovish}
+         \label{fig:cpi}
+ \end{figure*}   
+%     \vspace{0.2cm} % 稍微减小间距以确保能和表格挤在一页
+    
+    % 第二张子图 (PPI)
+
+
+    
+%     \begin{subfigure}[b]{\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{finbert_ppi_yoy_3m_ma.png}
+%         \caption{PPI Year-over-Year vs Sentiment}
+%         \label{fig:ppi}
+%     \end{subfigure}
+    
+%    \caption{Comparison of FinBERT-FOMC Sentiment with Economic Indicators. (a) shows the correlation with CPI, while (b) shows the correlation with PPI.}
+%     \label{fig:combined_analysis}
+% \end{figure*}
+
+%\begin{figure*}[t]
+%  \includegraphics[width=0.5\textwidth]{finbert_ppi_yoy_3m_ma.png} \hfill
+%  \includegraphics[width=0.5\textwidth]{finbert_cpi_yoy_3m_ma.png}
+%  \captionsetup{justification=raggedright, singlelinecheck=false}
+%  \caption {Performance Comparison of Sentiment Analysis Models on FOMC Dataset. Positive: Hawkish, %negative: Dovish}
+%    \label{CPI, PPI vs sentiment}
+%\end{figure*}
+
+
+\begin{table*}[!t]
+    \centering
+    \begin{tabular*}{\textwidth}{@{\extracolsep{\fill}}lccccc}
+        \toprule
+        \textbf{Model} & \textbf{Accuracy} & \textbf{F1-Score} & \textbf{Domain} & \textbf{Non-neutral \%} & \textbf{Macro F1} \\
+        \midrule
+        RoBERTa-Large & 47.6\% & 0.328 & General & 4.5\% & 0.24 \\
+        Cardiff-RoBERTa & 43.4\% & 0.385 & General & 32.0\% & 0.33 \\
+        \textbf{FinBERT-FOMC} & \textbf{42.9\%} & \textbf{0.429} & \textbf{Fed-Specific} & \textbf{53.0\%} & \textbf{0.38} \\
+        Baseline & 39.3\% & 0.383 & Rule-based & N/A & 0.35 \\
+        FinBERT & 38.5\% & 0.403 & Finance-General & 45.2\% & 0.35 \\
+        \bottomrule 
+    \end{tabular*}
+    \captionsetup{justification=raggedright, singlelinecheck=false}
+    \caption{Performance Comparison of Sentiment Analysis Models on FOMC Dataset. Dovish>0>Hawkish}
+    \label{tab:model_performance}
+\end{table*}
+% ---------------------------------------------------------------------
+
+\begin{table*}[t]
+\centering
+\small % 保持小号字体，内容多时很重要
+% p{7cm}: 强制 source text 宽度为 6cm，超过会自动换行
+% Y: 剩下的 6 列自动平分剩余空间，并居中对齐
+\begin{tabularx}{\linewidth}{m{6cm} X X X X X X}
+\toprule
+\textbf{Text} & \textbf{Label} & \textbf{Base} & \textbf{FinBERT} & \textbf{FOMC} & \textbf{RoBERTa} & \textbf{Cardiff} \\
+\midrule
+% 这里填入内容
+During the 1980s and 1990s, the Federal Reserve succeeded in bringing inflation down from double-digit levels to the average rate of about 2 percent that has prevailed over the past decade. 
+& Hawkish & Dovish & Dovish & Dovish & Neutral & Neutral \\
+   \midrule
+Nonetheless, employment is still 9.5 million below its pre-pandemic level for the economy as a whole.
+& Hawkish & Neutral & Dovish & Dovish & Neutral & Neutral \\
+
+\bottomrule
+\end{tabularx}
+\caption{Comparison of predictions. The source text is wrapped to a fixed width to allow space for all labels.}
+\label{tab:model-comparison}
+\end{table*}
+
+\subsection{Model evaluation \& Comparison}
+
+Table~\ref{tab:model_performance} presents a comparative analysis of five distinct models evaluated on the FOMC dataset. The standard FinBERT model, which is trained on general financial text, underperforms its FOMC-tuned counterpart, highlighting the necessity of domain adaptation for this specific task. While other pre-trained language models (PLMs) generally outperform the rule-based baseline, a nuanced trade-off between accuracy and class balance is observed.
+
+The highest raw accuracy (47.6\%) is achieved by RoBERTa-Large model, while a closer inspection of its predictions reveals a significant bias toward the majority class: it predicts only 4.5\% of sentences as non-neutral (Hawkish or Dovish). This suggests that while accurate overall, the model fails to capture the subtle polarity shifts critical for monetary policy analysis, effectively behaving as a sophisticated majority-class classifier.
+
+In contrast, the domain-specific FinBERT-FOMC demonstrates superior capability in detecting sentiment polarity. Although its overall accuracy (42.9\%) is slightly lower than RoBERTa-Large, it achieves the highest F1-score (0.429) and Macro F1 (0.38). Crucially, FinBERT-FOMC identifies a substantial proportion of non-neutral signals (53.0\%), aligning more closely with the expected distribution of market-moving statements in central bank communications. 
+This evaluation shows that FinBERT-FOMC model has the best balanced performance and it is then used to inference the sentiment from FOMC during year 2018 to 2024.
+
+\subsection{Sentiment Analysis and Economic Validation}
+
+Figure~\ref{fig:cpi}  illustrates a clear correlation between our sentiment metric and macroeconomic indicators. During the contractionary phase in 2020 when inflationary indices reached historical lows, the sentiment metric reached a deep bottom simultaneously, reflecting the Federal Reserve's strong dovish stance.
+
+Subsequently, accompany by the transition of economy into the inflationary spike of 2021-2022, characterized by PPI surging to nearly 20\% and CPI peaking to nearly 8\%, the sentiment ascended rapidly towards hawkish level. This trajectory resonate with the monetary policy pivot from a zero-interest rate level to an aggressive tightening cycle.
+
+These findings suggest that, despite the inherent noise in unstructured text, FinBERT-FOMC model successfully functions as a high-frequency proxy for monetary policy stance, effectively tracking the broader macroeconomic cycle.
+
+\section*{Discussion}
+\subsection{Model Comparison \& Error analysis}
+Out of 604 labeled sentences, 160 (26.5\%) were misclassified by every model tested, underscoring the inherent difficulty of interpreting policy stance in financial texts. These consistent failures were most prevalent in FOMC Minutes (62 cases) and Press Conferences (62 cases), compared to Speeches (36 cases), suggesting that the formal and often ambiguous language of official records poses a greater challenge than direct oratory.
+
+A significant observation is that models trained based on general BERT model without any specific fine tuning on financial dataset has a comparatively low F1-score, revealing the identity of sentiment classification in a financial context. Among those BERT based model, FinBERT-FOMC which is specifically trained for FOMC documents out performs FinBERT in all matrices. Table \ref{tab:model-comparison} reveals this systemic failure. In this instance, specialized financial models erroneously predicted the stance as Dovish, whereas general-domain models (e.g., RoBERTa, Cardiff) defaulted to Neutral.
+
+ In sentences presented in Table \ref{tab:model-comparison}, models specialized for finance incorrectly predicted both stance as 'Dovish'. The error reveals a critical flaw in global sentiment mapping: financial models correctly identified 'inflation' and 'bringing down' as negative concepts. However, this mapping logic 'Negative' -> 'Dovish' fails in the specific context. When the Federal Reserve refer the history of combating inflation, it implies the ambition of bring down inflation (Hawkish). In the second given example, despite the presence of specific keywords ("employment," "below"), the sentiment is determined by adversative conjunctions ("Nonetheless," "still"). These examples highlight the significance of introducing context-dependent mapping and explicit modeling of discourse structure in sentiment analysis.
+
+\subsection{Sentiment negative bias analysis}
+
+
+
+
+\section*{Conclusion}
+
+% Bibliography entries for the entire Anthology, followed by custom entries
+%\bibliography{anthology,custom}
+% Custom bibliography entries only
+\bibliography{custom}
+
+\appendix
+
+\section{Example Appendix}
+\label{sec:appendix}
+
+This is an appendix.
+
+\bibliographystyle{acl_natbib}
+\end{document}
