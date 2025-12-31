@@ -33,3 +33,7 @@ ENV/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+
+# Custom project ignores
+reports/
+scripts/

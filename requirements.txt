@@ -14,3 +14,7 @@ pandas_datareader
 arch
 jupyter
 notebook
+bertopic
+sentence-transformers
+umap-learn
+hdbscan

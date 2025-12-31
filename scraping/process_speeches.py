@@ -1,46 +1,22 @@
 import pandas as pd
-import nltk
 import os
 import re
+import sys
 from datetime import datetime
 
-# Ensure NLTK data is available
-try:
-    nltk.data.find('tokenizers/punkt')
-    nltk.data.find('tokenizers/punkt_tab')
-except LookupError:
-    print("Downloading NLTK data...")
-    nltk.download('punkt')
-    nltk.download('punkt_tab')
+# Path setup to import utils
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(SCRIPT_DIR) # e.g. e:\Textming
+sys.path.append(PROJECT_ROOT)
+
+from utils.utilities import (
+    split_into_sentences_robust, 
+    clean_common_noise
+)
 
 # Configuration
-# We assume this script is running from e:\Textming\Fed_Project\scraping or root
-# Adjust paths relative to this script location
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR) # Go up one level to Fed_Project
-
-# CHANGED: Read input from 'data' folder instead of 'scraping' folder
 INPUT_FILE = os.path.join(PROJECT_ROOT, "data", "raw", "fed_speeches.csv")
 OUTPUT_FILE = os.path.join(PROJECT_ROOT, "data", "processed", "fed_speeches_sentences.csv")
-
-def clean_text(text):
-    """
-    Basic text cleaning before segmentation.
-    """
-    if not isinstance(text, str):
-        return ""
-    
-    # Remove "Return to text" references specifically
-    # Pattern: Number. Name (Year), "Title," ... Return to text
-    # We look for lines ending with "Return to text" or starting with a number and looking like a citation
-    if "Return to text" in text:
-        return ""
-    
-    # Remove lines that look purely like citations (e.g., "1. Author (Year)...")
-    if re.match(r'^\d+\.\s+[A-Z].*\(\d{4}\)', text):
-        return ""
-
-    return text.strip()
 
 def extract_date_from_url(url):
     """
@@ -88,25 +64,23 @@ def process_speeches():
         current_date = row.get('date')
         final_date = extracted_date if extracted_date else current_date
 
-        # 1. Pre-cleaning (remove references)
-        cleaned_text = clean_text(text)
+        # 1. Pre-cleaning (remove headers, references) using shared utility
+        # We can perform additional specific cleaning here if needed
+        cleaned_text = clean_common_noise(text)
+        
+        # Additional speech specific cleaning: remove lines starting with citation style numbers if not handled by utils
+        # (Though clean_common_noise handles headers, let's keep the citation check if it's specific)
+        if re.match(r'^\d+\.\s+[A-Z].*\(\d{4}\)', cleaned_text):
+            continue
+
         if not cleaned_text:
             continue
 
-        # 2. Sentence Segmentation
-        sentences = nltk.sent_tokenize(cleaned_text)
+        # 2. Robust Sentence Segmentation
+        # This utility takes care of splitting, noise filtering (short sentences), and recursive splitting
+        sentences = split_into_sentences_robust(cleaned_text)
 
         for sent in sentences:
-            sent = sent.strip()
-            
-            # 3. Filter short sentences or noise
-            if len(sent.split()) < 5:
-                continue
-            
-            # Double check for "Return to text" artifacts inside sentences
-            if "Return to text" in sent:
-                continue
-
             processed_rows.append({
                 'date': final_date,
                 'title': row.get('title', 'Unknown'),

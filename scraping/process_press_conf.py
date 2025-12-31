@@ -3,14 +3,16 @@ import pandas as pd
 import os
 import re
 import csv
-import nltk
-from nltk.tokenize import sent_tokenize
+import sys
 
-# 自动下载 NLTK 的分词模型，用于将长段落切分为单句
-try:
-    nltk.data.find('tokenizers/punkt')
-except LookupError:
-    nltk.download('punkt', quiet=True)
+# Add parent directory to path to import utils
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+from utils.utilities import (
+    split_into_sentences_robust, 
+    clean_common_noise, 
+    is_noise_content, 
+    preprocess_content
+)
 
 class FedPressConfProcessor:
     def __init__(self, data_folder):
@@ -18,6 +20,8 @@ class FedPressConfProcessor:
         初始化处理器。
         设定输入文件夹 (raw PDFs) 和输出路径 (processed CSV)。
         """
+        # Auto-detect path if data_folder is generic, or trust input
+        # Here we assume data_folder is correct root (e.g. e:\Textming\data)
         self.pdf_folder = os.path.join(data_folder, "raw", "press_conf_pdfs")
         self.output_csv = os.path.join(data_folder, "processed", "fed_press_conf_structured.csv")
 
@@ -28,6 +32,10 @@ class FedPressConfProcessor:
         """
         print(f"\n[Processing PDFs] Processing files in {self.pdf_folder}...")
         all_rows = []
+        if not os.path.exists(self.pdf_folder):
+             print(f"Error: Folder {self.pdf_folder} does not exist.")
+             return
+
         # 获取目录下所有 PDF 文件
         files = [f for f in os.listdir(self.pdf_folder) if f.endswith('.pdf')]
         
@@ -67,11 +75,16 @@ class FedPressConfProcessor:
                 if c not in cols:
                     cols.append(c)
             df = df[cols]
+            
+            # Ensure output directory exists
+            os.makedirs(os.path.dirname(self.output_csv), exist_ok=True)
         
-        # 关键参数 quoting=csv.QUOTE_ALL：
-        # 强制给所有文本加引号。防止因为文本里包含逗号(,)，导致 CSV 列错位。
-        df.to_csv(self.output_csv, index=False, encoding='utf-8-sig', quoting=csv.QUOTE_ALL)
-        print(f"\n[Processing Complete] Saved {len(df)} segments to {self.output_csv}")
+            # 关键参数 quoting=csv.QUOTE_ALL：
+            # 强制给所有文本加引号。防止因为文本里包含逗号(,)，导致 CSV 列错位。
+            df.to_csv(self.output_csv, index=False, encoding='utf-8-sig', quoting=csv.QUOTE_ALL)
+            print(f"\n[Processing Complete] Saved {len(df)} segments to {self.output_csv}")
+        else:
+            print("\n[Processing Complete] No data found.")
 
     def _extract_date_from_filename(self, filename):
         """
@@ -112,20 +125,21 @@ class FedPressConfProcessor:
         即使裁剪了，有些位于正文区域的标题、日期、或 'FINAL' 标记仍可能残留。
         使用正则表达式将这些特定模式的行剔除。
         """
+        # First use shared common noise cleaner
+        text = clean_common_noise(text)
+        
+        # Then clean specific Press Conference artifacts
         lines = text.split('\n')
         cleaned = []
         patterns = [
-            r"Page \d+ of \d+",   # 页码
-            r"^FINAL$",           # 状态标记
             r"Chair(man)? Powell['']?s? Press Conference", # 标题变体
-            r"Transcript of .* Press Conference", 
-            r"^[A-Z][a-z]+ \d{1,2}, 20\d{2}$", # 日期行 (e.g. March 23, 2022)
             r"Chair Powell['']?s? Press Conference Call" 
         ]
         
         for line in lines:
             line = line.strip()
-            if not line or line.isdigit(): continue # 跳过空行和纯数字行
+            if not line: continue
+            
             is_noise = False
             for pat in patterns:
                 if re.search(pat, line, re.IGNORECASE):
@@ -179,7 +193,7 @@ class FedPressConfProcessor:
         
         if min_idx != float('inf'):
             split_idx = min_idx
-            print(f"DEBUG: Found earliest marker '{found_marker}' at {split_idx} for date {date_str}")
+            # print(f"DEBUG: Found earliest marker '{found_marker}' at {split_idx} for date {date_str}")
         else:
             print(f"DEBUG: No marker found for date {date_str}")
         
@@ -229,57 +243,25 @@ class FedPressConfProcessor:
                 speaker = parts[i].strip().upper()
                 content = parts[i+1].strip()
                 # 过滤 "Thank you", "You're on mute" 等无效对话
-                if self._is_noise_content(content): continue
+                if is_noise_content(content): continue
                 # 过滤误判的标题 (如 "TRANSCRIPT OF")
                 if "TRANSCRIPT OF" in speaker or "PAGE" in speaker: continue
-                
-                segments.append({
-                    'date': date_str, 
-                    'section': 'Conference Call', 
-                    'speaker': speaker, # 保留说话人名字，因为可能有其他人
-                    'text': content
-                })
+
+                # 对发言内容进行句子分割，与其他部分保持一致
+                if len(content.strip()) > 10:
+                    # 预处理内容以获得更细粒度的分割
+                    content_segments = preprocess_content(content)
+                    for segment in content_segments:
+                        if len(segment.strip()) > 10:
+                            sentences = split_into_sentences_robust(segment)
+                            for sentence in sentences:
+                                segments.append({
+                                    'date': date_str,
+                                    'section': 'Conference Call',
+                                    'speaker': speaker, # 保留说话人名字，因为可能有其他人
+                                    'text': sentence
+                                })
         return segments
-
-    def _is_noise_content(self, text):
-        """
-        判断一句话是否是无意义的对话噪音。
-        例如: "Thank you", "You're on mute".
-        """
-        noise_phrases = [
-            "Thank you", "Thanks", "You're on mute", "Can you hear me", 
-            "[No response]", "(No response)", "hearing no objection",
-            "so moved", "second", "all in favor", "aye"
-        ]
-        text_lower = text.lower().strip("., ")
-        if len(text) < 5: return True # 太短的直接丢弃
-        for phrase in noise_phrases:
-            # 完全匹配或包含短语
-            if text_lower == phrase.lower(): return True
-            if len(text) < 30 and phrase.lower() in text_lower: return True
-        return False
-
-    def _split_into_sentences(self, text):
-        """
-        【分句逻辑】
-        将长段落切分为单句。这对于 BERT 模型（通常有 512 token 限制）非常重要。
-        同时过滤掉过短的句子。
-        """
-        if not text or len(text.strip()) < 10:
-            return []
-        
-        # 使用 NLTK 的句子分词器
-        sentences = sent_tokenize(text)
-        
-        valid_sentences = []
-        for sent in sentences:
-            sent = sent.strip()
-            # 只保留有实质内容的句子 (至少20字符且3个单词)
-            if len(sent) >= 20 and len(sent.split()) >= 3:
-                if not self._is_noise_content(sent):
-                    valid_sentences.append(sent)
-        
-        return valid_sentences
 
     def _extract_speaker_segments(self, text, is_qa):
         """
@@ -296,7 +278,7 @@ class FedPressConfProcessor:
         if len(parts) < 2:
             # 如果没找到任何说话人标记（可能是格式异常），非 Q&A 时保留全文
             if not is_qa and text:
-                return self._split_into_sentences(text)
+                return split_into_sentences_robust(text)
             return []
 
         for i in range(1, len(parts), 2):
@@ -310,16 +292,26 @@ class FedPressConfProcessor:
                 if "Transcript of" in content[:100]:
                      content = content.split("Transcript of")[0]
                 
-                if self._is_noise_content(content): continue
+                if is_noise_content(content): continue
                 
                 # 将这一段发言切分成句子
                 if len(content) > 10:
-                    sentences = self._split_into_sentences(content)
-                    valid_segments.extend(sentences)
+                    # 预处理：将内容按段落分割，以获得更细粒度的文本块
+                    content_segments = preprocess_content(content)
+                    for segment in content_segments:
+                        if len(segment.strip()) > 10:
+                            sentences = split_into_sentences_robust(segment)
+                            valid_segments.extend(sentences)
         
         return valid_segments
 
 if __name__ == "__main__":
-    DATA_ROOT = r"e:\Textming\data"
+    # Use relative path if running from scraping directory, or adapt
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Assuming standard structure e:\Textming\scraping\process_press_conf.py
+    # and data in e:\Textming\data
+    DATA_ROOT = os.path.join(os.path.dirname(current_dir), "data")
+    
+    print(f"Data root: {DATA_ROOT}")
     processor = FedPressConfProcessor(DATA_ROOT)
     processor.process_pdfs()
