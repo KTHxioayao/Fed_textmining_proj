@@ -15,7 +15,7 @@ We compare multiple state-of-the-art transformer models to determine which best 
 - **Multi-Model Sentiment Analysis**: 
     - **FinBERT** (ProsusAI)
     - **FinBERT-FOMC** (specialized for Fed language)
-    - **RoBERTa** (Base & Large)
+    - **RoBERTa-Large** & **Cardiff-RoBERTa**
 - **Econometric Analysis**: Correlation and visualization of sentiment trends against Macroeconomic data (CPI, PPI, Unemployment, Fed Funds Rate).
 - **Academic Output**: Full LaTeX pipeline for generating ACL-format research papers.
 
