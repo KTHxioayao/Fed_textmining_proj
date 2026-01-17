@@ -3,22 +3,22 @@ import re
 import nltk
 import os
 
-# 首次运行需要下载 nltk 的分词数据
+# Download nltk tokenizer data if first run
 try:
     nltk.data.find('tokenizers/punkt')
 except LookupError:
     nltk.download('punkt')
 
 def load_data(file_path):
-    """加载原始 CSV 数据"""
+    """Load raw CSV data"""
     if not os.path.exists(file_path):
         print(f"Error: File not found at {file_path}")
         return None
     
     df = pd.read_csv(file_path)
-    # 转换日期格式
+    # Convert date format
     df['date'] = pd.to_datetime(df['date'], errors='coerce')
-    # 确保 text 列是字符串
+    # Ensure text column is string
     df['text'] = df['text'].astype(str)
     
     print(f"Successfully loaded {len(df)} documents.")
@@ -26,13 +26,13 @@ def load_data(file_path):
 
 def extract_sections(text):
     """
-    核心逻辑：解析 FOMC Minutes 的特定章节
-    返回一个列表：[{'section_name': 'Staff Review', 'text': '...'}, ...]
+    Core Logic: Parse specific sections of FOMC Minutes
+    Returns a list: [{'section_name': 'Staff Review', 'text': '...'}, ...]
     """
     
-    # 1. 定义我们关心的“高价值”章节标题 (标准化命名)
-    # 键是标准化的列名，值是可能出现在文本中的标题关键词列表
-    # 注意：按大概的出现顺序排列，但代码会根据实际 index 排序
+    # 1. Define "High Value" section headers (Standardized Naming)
+    # Keys are standardized column names, values are possible header keywords in text
+    # Note: Arranged by approximate order of appearance, but code sorts by actual index
     section_patterns = {
         "Developments in Financial Markets": [
             "Developments in Financial Markets and Open Market Operations"
@@ -42,7 +42,7 @@ def extract_sections(text):
         ],
         "Staff Review of Economic Situation": [
             "Staff Review of the Economic Situation", 
-            "The information reviewed for the" # 有时这部分没有标题，直接以这句话开头
+            "The information reviewed for the" # Sometimes this section has no header, starts directly with this phrase
         ],
         "Staff Review of Financial Situation": [
             "Staff Review of the Financial Situation"
@@ -51,17 +51,17 @@ def extract_sections(text):
             "Staff Economic Outlook"
         ],
         "Participants' Views": [
-            "Participants' Views on Current Conditions and the Economic Outlook", # 完整标题
+            "Participants' Views on Current Conditions and the Economic Outlook", # Full title
             "Participants' Views on Current Conditions",
-            "Participants’ Views on Current Conditions", # 智能引号
-            "Discussion of Monetary Policy" # 旧版纪要常用
+            "Participants’ Views on Current Conditions", # Smart quotes
+            "Discussion of Monetary Policy" # Common in older minutes
         ],
         "Committee Policy Action": [
             "Committee Policy Action"
         ]
     }
     
-    # 2. 找到所有标题在文中的位置
+    # 2. Find positions of all headers in the text
     matches = []
     text_lower = text.lower()
     
@@ -75,16 +75,16 @@ def extract_sections(text):
                     "header_length": len(keyword), # Record length to skip header
                     "priority": idx 
                 })
-                # 找到一个关键词后，该章节就定位了，跳过该章节的其他别名
+                # Once a keyword is found, the section is located, skip other aliases
                 break 
     
-    # 3. 按在文中出现的顺序排序
+    # 3. Sort by appearance order in text
     if not matches:
         return []
     
     matches.sort(key=lambda x: x['priority'])
     
-    # 4. 切分文本
+    # 4. Split text
     extracted_data = []
     
     for i in range(len(matches)):
@@ -93,13 +93,13 @@ def extract_sections(text):
         # Skip the header itself
         content_start = start + current_match['header_length']
         
-        # 结束位置是下一个章节的开始，或者是文末
+        # End position is the start of the next section, or end of text
         if i < len(matches) - 1:
             end = matches[i+1]['start_index']
         else:
             end = len(text)
             
-        # 提取该段文本 (去除标题)
+        # Extract section text (remove header)
         section_text = text[content_start:end].strip()
         
         extracted_data.append({
@@ -111,7 +111,7 @@ def extract_sections(text):
 
 def segment_sentences(df):
     """
-    将文档级的 DataFrame 转换为句子级的 DataFrame，并增加 'section' 列
+    Convert document-level DataFrame to sentence-level DataFrame, adding 'section' column
     """
     processed_rows = []
     
@@ -122,32 +122,32 @@ def segment_sentences(df):
         date = row['date']
         doc_id = idx
         
-        # 1. 提取章节 (这会自动过滤掉不在列表中的 administrative 内容)
+        # 1. Extract sections (This automatically filters out administrative content not in the list)
         sections = extract_sections(doc_text)
         
-        # 如果没有提取到任何章节 (可能是格式太旧或太新)，为了安全起见，暂时跳过或记录
+        # If no sections extracted (possibly format too old or too new), skip or log for safety
         if not sections:
-            # 可以在这里添加 fallback 逻辑，比如保留全文
+            # Can add fallback logic here, e.g., keep full text
             continue
             
         for section in sections:
             section_name = section['section_name']
             section_content = section['section_text']
             
-            # 清理一下文本中的多余空白
+            # Clean up extra whitespace in text
             section_content = re.sub(r'\s+', ' ', section_content).strip()
             
-            # 2. 分句
+            # 2. Split sentences
             sentences = nltk.sent_tokenize(section_content)
             
             for sent in sentences:
                 sent = sent.strip()
                 
-                # 3. 句子级过滤
+                # 3. Sentence-level filtering
                 if len(sent.split()) < 5: 
                     continue
                 
-                # 过滤行政废话 (即使在章节内也可能出现)
+                # Filter administrative noise (may appear even within sections)
                 lower_sent = sent.lower()
                 noise_phrases = [
                     "meeting adjourned", 
@@ -162,7 +162,7 @@ def segment_sentences(df):
                 processed_rows.append({
                     'original_doc_id': doc_id,
                     'date': date,
-                    'section': section_name, # 新增的列！
+                    'section': section_name, # New column!
                     'sentence_text': sent,
                     'source_type': 'Minutes'
                 })
@@ -170,7 +170,7 @@ def segment_sentences(df):
     return pd.DataFrame(processed_rows)
 
 if __name__ == "__main__":
-    # 配置路径
+    # Configure paths
     INPUT_PATH = r"e:\Textming\data\raw\fed_minutes.csv"
     OUTPUT_PATH = r"e:\Textming\data\processed\fed_minutes_sentences_structured.csv"
     

@@ -200,8 +200,8 @@ def calculate_net_sentiment_counts(group):
     if total == 0:
         return 0
 
-    # 修正：(鹰派-鸽派) / 总数
-    # 这样鹰派多的时候，结果才是正数
+    # Correction: (Hawkish - Dovish) / Total
+    # So that when Hawkish is dominant, the result is positive
     return (h - d) / total
 
 
@@ -218,7 +218,7 @@ def calculate_net_sentiment_scores(group):
     if total == 0:
         return 0
 
-    # 修正：(鹰派分数 - 鸽派分数)
+    # Correction: (Hawkish Score - Dovish Score)
     return (h_score-d_score ) / total
 
 def get_sentiment_label_FinBERT_FOMC(raw_label):
@@ -230,27 +230,27 @@ def get_sentiment_label_FinBERT_FOMC(raw_label):
     """
     label_clean = str(raw_label).upper().replace("LABEL_", "")
     
-    # --- 1. 优先匹配文本 ---
-    # 修正点：Negative (经济差) 意味着央行要放水 -> 鸽派 (Dovish)
+    # --- 1. Prioritize Text Matching ---
+    # Correction: Negative (Bad Economy) implies Central Bank needed to ease -> Dovish
     if 'NEGATIVE' in label_clean: 
         return 'Dovish'   
-    # 修正点：Positive (经济好) 意味着央行要收紧 -> 鹰派 (Hawkish)
+    # Correction: Positive (Good Economy) implies Central Bank needed to tighten -> Hawkish
     if 'POSITIVE' in label_clean: 
         return 'Hawkish'  
     if 'NEUTRAL' in label_clean:
         return 'Neutral'
 
-    # --- 2. 匹配数字标签 (基于你提供的 Paper: 0=Neutral, 1=Positive, 2=Negative) ---
+    # --- 2. Match Numeric Labels (Based on provided Paper: 0=Neutral, 1=Positive, 2=Negative) ---
     if label_clean == '0': 
         return 'Neutral'
-    # 1对应Positive -> 经济好 -> 鹰派
+    # 1 corresponds to Positive -> Good Economy -> Hawkish
     elif label_clean == '1': 
         return 'Hawkish'
-    # 2对应Negative -> 经济差 -> 鸽派
+    # 2 corresponds to Negative -> Bad Economy -> Dovish
     elif label_clean == '2': 
         return 'Dovish'
     
-    # --- 3. 匹配关键词 ---
+    # --- 3. Match Keywords ---
     if 'HAWK' in label_clean: return 'Hawkish'
     if 'DOVE' in label_clean: return 'Dovish'
     
@@ -271,21 +271,21 @@ def get_sentiment_label_RoBERTa(raw_label):
     """
     label_clean = str(raw_label).upper().replace("LABEL_", "")
     
-    # --- 1. 优先匹配文本标签 ---
+    # --- 1. Prioritize Text Labels ---
     if 'NEGATIVE' in label_clean:
-        return 'Dovish'   # <--- 改正：坏消息 = 鸽派 (救市)
+        return 'Dovish'   # <--- Correction: Bad News = Dovish (Stimulus)
     if 'POSITIVE' in label_clean:
-        return 'Hawkish'  # <--- 改正：好消息 = 鹰派 (加息)
+        return 'Hawkish'  # <--- Correction: Good News = Hawkish (Hike)
     if 'NEUTRAL' in label_clean:
         return 'Neutral'
     
-    # --- 2. 匹配数字标签 (Standard RoBERTa) ---
+    # --- 2. Match Numeric Labels (Standard RoBERTa) ---
     if label_clean == '0':    # 0 is Negative
-        return 'Dovish'       # <--- 改正：Negative -> Dovish
+        return 'Dovish'       # <--- Correction: Negative -> Dovish
     elif label_clean == '1':  # 1 is Neutral
         return 'Neutral'
     elif label_clean == '2':  # 2 is Positive
-        return 'Hawkish'      # <--- 改正：Positive -> Hawkish
+        return 'Hawkish'      # <--- Correction: Positive -> Hawkish
     
-    # --- 3. 默认返回 ---
+    # --- 3. Default Return ---
     return 'Neutral'
